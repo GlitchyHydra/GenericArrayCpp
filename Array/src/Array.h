@@ -93,7 +93,7 @@ public:
 			return Ptr - rhs.Ptr;
 		}
 
-		/* -------------------------------Индексирование--------------------------------- */
+		/* -------------------------------Indexing--------------------------------- */
 		reference operator[](const difference_type _Off) const noexcept
 		{
 			return *(Begin + _Off);
@@ -103,12 +103,6 @@ public:
 		{
 			return *(Begin + _Off);
 		}
-
-		/*
-		reference operator[](const difference_type _Off) const noexcept
-		{
-			return *(*this + _Off);
-		}*/
 
 		/* -------------------------------Compare--------------------------------- */
 		bool operator==(const ConstIterator& rhs) const noexcept
@@ -284,12 +278,12 @@ public:
 		/* -------------------------------Индексирование--------------------------------- */
 		reference operator[](const difference_type _Off) const noexcept
 		{
-			return *Ptr;
+			return *(Begin + _Off);
 		}
 
 		reference operator[](const difference_type _Off)
 		{
-			return *Ptr;
+			return *(Begin + _Off);
 		}
 	};
 

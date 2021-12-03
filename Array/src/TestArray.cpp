@@ -27,8 +27,8 @@ public:
 
 	const std::wstring Strs[INITIAL_STR_CAPACITY] = { L"Es", L"kommt", L"für", L"mich", L"nicht", L"in", L"frage" };
 	const std::wstring MiddleStr = L"Redewendung";
-	ptrdiff_t StrInsertIndex = INITIAL_STR_CAPACITY / 2;
-	ptrdiff_t IntInsertIndex = INITIAL_INT_CAPACITY / 2;
+	int StrInsertIndex = INITIAL_STR_CAPACITY / 2;
+	int IntInsertIndex = INITIAL_INT_CAPACITY / 2;
 
 	void SetUp() override
 	{

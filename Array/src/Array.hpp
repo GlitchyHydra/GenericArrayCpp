@@ -58,7 +58,7 @@ Array<T>::Array(Array const& rhs)
 	Size = rhs.Size;
 	Capacity = rhs.Capacity;
 
-	for (ptrdiff_t i = 0; i < Size; i++)
+	for (size_t i = 0; i < Size; i++)
 		new(Ptr + i) T(rhs.Ptr[i]);
 }
 
@@ -137,7 +137,7 @@ template<typename T>
 int Array<T>::Insert(int index, const T& value)
 {
 	bool isEnoughCapacity = EnsureCapacity();
-	bool isMovable = std::is_move_constructible<T>::value;
+	constexpr bool isMovable = std::is_move_constructible<T>::value;
 	if (isEnoughCapacity)
 	{
 		if constexpr (isMovable)
@@ -189,7 +189,7 @@ int Array<T>::Insert(int index, const T& value)
 template<typename T>
 void Array<T>::Remove(int index)
 {
-	bool isMovable = std::is_move_constructible<T>::value;
+	constexpr bool isMovable = std::is_move_constructible<T>::value;
 	Ptr[index].~T();
 	Size--;
 	if constexpr (isMovable)
