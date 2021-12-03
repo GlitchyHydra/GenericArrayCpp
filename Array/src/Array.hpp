@@ -6,7 +6,7 @@
 template<typename T>
 Array<T>::Array() : Array(INIT_CAPACITY)
 {
-	//TODO choose size from sizeof
+	
 }
 
 template<typename T>
@@ -14,6 +14,18 @@ Array<T>::Array(size_t capacity)
 	: Capacity(capacity), Size(0)
 {
 	Ptr = allocate_memory(capacity);
+}
+
+template<typename T>
+Array<T>::Array(std::initializer_list<T> list) : Array(list.size() * 2)
+{
+	Size = list.size();
+	int i = 0;
+	for (auto val : list)
+	{
+		new(Ptr + i) T(val);
+		i++;
+	}
 }
 
 /*-----------------------Destructor------------------------*/
@@ -33,23 +45,28 @@ Array<T>::~Array()
 }
 
 template<typename T>
-Array<T>::Array(Array&& other)
-	: Ptr(std::exchange(other.Ptr, nullptr)),
-	Capacity(std::exchange(other.Capacity, 0)), Size(std::exchange(other.Size, 0))
+Array<T>::Array(Array&& rhs)
+	: Ptr(std::exchange(rhs.Ptr, nullptr)),
+	Capacity(std::exchange(rhs.Capacity, 0)), Size(std::exchange(rhs.Size, 0))
 {
 }
 
 template<typename T>
-Array<T>::Array(const Array& other)
+Array<T>::Array(Array const& rhs)
 {
-	//TODO
+	Ptr = allocate_memory(rhs.Capacity);
+	Size = rhs.Size;
+	Capacity = rhs.Capacity;
+
+	for (ptrdiff_t i = 0; i < Size; i++)
+		new(Ptr + i) T(rhs.Ptr[i]);
 }
 
 template<typename T>
 Array<T>& Array<T>::operator=(const Array<T>& rhs)
 {
 	if (this == &rhs)
-		return this;
+		return *this;
 
 	if (Size != rhs.Size)
 	{
@@ -58,26 +75,26 @@ Array<T>& Array<T>::operator=(const Array<T>& rhs)
 		Ptr = nullptr;
 		Size = 0;
 		Capacity = 0;
-		Ptr = allocate_memory(Capacity);
+		Ptr = allocate_memory(rhs.Capacity);
 		Size = rhs.Size;
 		Capacity = rhs.Capacity;
 	}
 
-	std::copy(rhs.Ptr, rhs.Ptr + rhs.Size, Ptr);
+	for (size_t i = 0; i < Size; i++)
+		new(Ptr + i) T(rhs.Ptr[i]);
 	return *this;
 }
 
 template<typename T>
-Array<T>& Array<T>::operator=(const Array<T>&& other)
+Array<T>& Array<T>::operator=(Array<T>&& rhs)
 {
-	if (this == &other)
+	if (this == &rhs)
 		return *this;
-	//free self allocated memory
+
 	FreeMemory();
-	//move from rhs
-	Ptr = std::exchange(other.Ptr, nullptr);
-	Size = std::exchange(other.Size, 0);
-	Capacity = std::exchange(other.Capacity, 0);
+	Ptr = std::exchange(rhs.Ptr, nullptr);
+	Size = std::exchange(rhs.Size, 0);
+	Capacity = std::exchange(rhs.Capacity, 0);
 	return *this;
 }
 
@@ -96,20 +113,14 @@ int Array<T>::Insert(const T& value)
 	{
 		Capacity *= 2u;
 		T* reallocPtr = allocate_memory(Capacity);
-		//C++17
-		//std::is_trivially_copyable https://en.cppreference.com/w/cpp/types/is_trivially_copyable
-		//memcpy implementation against cycle?
-		bool isMovable = std::is_move_constructible<T>::value;
-		if (isMovable)
+		if constexpr (std::is_move_constructible<T>::value)
 		{
-			//move if support
-			for (ptrdiff_t i = 0; i < Size; i++)
+			for (int i = 0; i < Size; i++)
 				new(reallocPtr + i) T(std::move(Ptr[i]));
 		}
 		else
 		{
-			//copy if does not
-			for (ptrdiff_t i = 0; i < Size; i++)
+			for (int i = 0; i < Size; i++)
 				new(reallocPtr + i) T(Ptr[i]);
 		}
 		FreeMemory();
@@ -125,51 +136,53 @@ int Array<T>::Insert(const T& value)
 template<typename T>
 int Array<T>::Insert(int index, const T& value)
 {
-	if (index > Size - 1)
-		return Insert(value);
-
 	bool isEnoughCapacity = EnsureCapacity();
-	//C++17
 	bool isMovable = std::is_move_constructible<T>::value;
 	if (isEnoughCapacity)
 	{
-		if (isMovable)
-			//move to right
-			for (ptrdiff_t i = Size; i > index; i--)
+		if constexpr (isMovable)
+		{
+			for (int i = Size; i > index; i--)
+			{
 				new(Ptr + i) T(std::move(Ptr[i - 1]));
+				Ptr[i - 1].~T();
+			}
+				
+		}
 		else
-			for (ptrdiff_t i = Size; i > index; i--)
+		{
+			for (int i = Size; i > index; i--)
+			{
 				new(Ptr + i) T(Ptr[i - 1]);
+				Ptr[i - 1].~T();
+			}
+		}
 	}
 	else
 	{
 		Capacity *= 2u;
 		T* reallocPtr = allocate_memory(Capacity);
-		if (isMovable)
+		auto indexAfterInset = index + 1;
+		if constexpr (isMovable)
 		{
-			for (ptrdiff_t i = 0; i < Size; i++)
-				new(&reallocPtr[i]) T(data[i]);
+			for (int i = 0; i < index; i++)
+				new(&reallocPtr[i]) T(std::move(Ptr[i]));
+			for (int i = indexAfterInset; i < Size; i++)
+				new(&reallocPtr[i]) T(std::move(Ptr[i]));
 		}
 		else
 		{
-			if (index == 0)
-				std::memcpy(reallocPtr + 1, Ptr, Size);
-			else
-			{
-				//first half before index
-				for (ptrdiff_t i = 0; i < Size; i++)
-					new(&reallocPtr[i]) T(data[i]);
-				std::memcpy(reallocPtr, Ptr, index);
-				//second half after index
-				std::memcpy(reallocPtr + index + 1, Ptr, Size - index);
-			}
-			//in index
-			new(&reallocPtr[index]) T(value);
+			for (size_t i = 0; i < index; i++)
+				new(&reallocPtr[i]) T(Ptr[i]);
+			for (size_t i = indexAfterInset; i < Size; i++)
+				new(&reallocPtr[i]) T(Ptr[i]);
 		}
 		FreeMemory();
+		Ptr = reallocPtr;
 	}
 	new(&Ptr[index]) T(value);
-	return 0;
+	Size++;
+	return index;
 }
 
 /*-----------------------Remove------------------------*/
@@ -179,24 +192,30 @@ void Array<T>::Remove(int index)
 	bool isMovable = std::is_move_constructible<T>::value;
 	Ptr[index].~T();
 	Size--;
-	if (isMovable)
+	if constexpr (isMovable)
 	{
-		//move if support
-		for (ptrdiff_t i = Size; i > index; i--)
-			new(&Ptr[i - 1]) T(std::move(Ptr[i]));
+		for (int i = index; i < Size; i++)
+		{
+			new(&Ptr[i]) T(std::move(Ptr[i + 1]));
+			Ptr[i + 1].~T();
+		}
+			
 	}
 	else
 	{
-		//copy if does not
-		for (ptrdiff_t i = Size; i > index; i--)
-			new(&Ptr[i - 1]) T(Ptr[i]);
+		for (int i = index; i < Size; i++)
+		{
+			new(&Ptr[i]) T(Ptr[i + 1]);
+			Ptr[i + 1].~T();
+		}
+			
 	}
 }
 
 template<typename T>
 const T& Array<T>::operator[](int index) const
 {
-	return const Ptr[index];
+	return Ptr[index];
 }
 
 template<typename T>
@@ -204,18 +223,3 @@ T& Array<T>::operator[](int index)
 {
 	return Ptr[index];
 }
-
-/*---------------------------- Iterator -----------------------------*/
-/*
-template<typename T>
-Array<T>::ConstIterator Array<T>::ForwardIterator()
-{
-	return nullptr;
-}
-
-template<typename T>
-Array<T>::ConstIterator Array<T>::ReverseIterator()
-{
-	return nullptr;
-}
-*/

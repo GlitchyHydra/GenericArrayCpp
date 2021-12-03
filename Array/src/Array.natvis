@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?> 
+<AutoVisualizer xmlns="http://schemas.microsoft.com/vstudio/debugger/natvis/2010"> 
+<Type Name="Array&lt;*&gt;">
+  <DisplayString>{{Size = {Size}}}</DisplayString>
+  <Expand>
+    <Item Name="[size]">Size</Item>
+    <Item Name="[capacity]">Capacity</Item>
+    <ArrayItems>
+      <Size>Size</Size>
+      <ValuePointer>Ptr</ValuePointer>
+    </ArrayItems>
+  </Expand>
+</Type>
+
+  <Type Name="Array::ConstIterator" Inheritable="true">
+    <DisplayString>{{element = {*(Ptr + Offset)}}}</DisplayString>
+    <Expand>
+      <Item Name="[element]">*(Ptr + Offset)</Item>
+      <ArrayItems>
+        <Size>Size</Size>
+        <ValuePointer>Ptr</ValuePointer>
+      </ArrayItems>
+    </Expand>
+  </Type>
+</AutoVisualizer>
